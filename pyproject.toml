@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "attribyt"
+version = "0.1.0"
+description = "Privacy-first attribution engine for marketers"
+readme = "README.md"
+authors = [{name = "eapte", email = "eapte@example.com"}]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+requires-python = ">=3.11"
+dependencies = [
+    "polars",
+    "typer",
+    "rich",
+    "plotly",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "clickhouse-connect"
+]
+
+[project.scripts]
+attribyt = "main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["attribution*"]
