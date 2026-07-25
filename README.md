@@ -2,7 +2,7 @@
 
 **Privacy-first, on-premises CLI tool for multi-touch attribution.**
 
-Attribyt helps marketers and analysts understand which channels truly drive conversions. Unlike Last-Click attribution, it uses **Markov chains** to fairly distribute credit across all touchpoints.
+Attribyt helps marketers and analysts understand which channels truly drive conversions. Unlike Last-Click attribution, it uses **Markov chains** (via Removal Effect) to fairly distribute credit across all touchpoints.
 
 ---
 
@@ -19,22 +19,28 @@ Attribyt solves this by offering **4 different attribution models** side-by-side
 
 ## 🚀 Features
 
-- **4 attribution models**: Last-Click, Linear, Time Decay, Markov
+- **4 attribution models**: Last-Click, Linear, Time Decay, Markov (Removal Effect)
 - **Multiple data sources**: CSV, PostgreSQL, ClickHouse
 - **Interactive Sankey diagram** for visualizing user journeys
 - **Export results** to CSV for further analysis
 - **Privacy-first**: all data stays on your machine — no cloud, no tracking
 - **Interactive mode** for beginners — no coding required
+- **Fast and lightweight** — works with up to 50,000 rows
 
 ---
 
 ## 🛠 Installation
 
 ```bash
+# Clone the repository
 git clone https://github.com/eapte/attribyt.git
 cd attribyt
+
+# Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+
+# Install the package
 pip install -e .
 ```
 
@@ -54,7 +60,7 @@ You'll be guided through a setup wizard — no command-line skills needed.
 ### Command-line mode
 
 ```bash
-attribyt --from csv --file examples/test_data100.csv --model both --sankey --export results.csv --user-col client_id --timestamp-col event_time --channel-col traffic_source --event-col action --revenue-col amount
+attribyt --from csv --file examples/test_data100.csv --model both --sankey --export results.csv --user-id client_id --timestamp event_time --channel traffic_source --event action --revenue amount
 ```
 
 ### Options
@@ -65,12 +71,14 @@ attribyt --from csv --file examples/test_data100.csv --model both --sankey --exp
 | `--file` | Path to CSV file |
 | `--model` | `last-click`, `linear`, `time-decay`, `markov`, `both` |
 | `--sankey` | Generate Sankey diagram (HTML) |
-| `--export` | Export results to CSV |
-| `--user-col` | Column name for user ID |
-| `--timestamp-col` | Column name for timestamp |
-| `--channel-col` | Column name for channel |
-| `--event-col` | Column name for event type |
-| `--revenue-col` | Column name for revenue |
+| `--export` | Export results to CSV file |
+| `--user-id` | Column name for user ID |
+| `--timestamp` | Column name for timestamp |
+| `--channel` | Column name for channel |
+| `--event` | Column name for event type |
+| `--revenue` | Column name for revenue |
+| `--start` | Start date (YYYY-MM-DD) |
+| `--end` | End date (YYYY-MM-DD) |
 
 ---
 
@@ -95,23 +103,26 @@ attribyt --from csv --file examples/test_data100.csv --model both --sankey --exp
 ```
 Summary
 Total users: 100 | Total touches: 267 | Converted: 100 users (100.0%) | Total revenue: $9,951.00
+
+Attribution Comparison
+┌──────────────┬────────────┬──────────┬────────────┬─────────┬──────────┐
+│ Channel      │ Last-Click │ Linear   │ Time Decay │ Markov  │ Delta    │
+├──────────────┼────────────┼──────────┼────────────┼─────────┼──────────┤
+│ organic      │ 1,990.20   │ 1,923.86 │ 1,981.67   │ 3,317.00│ +1,326.80│
+│ google_ads   │ 1,691.67   │ 1,816.06 │ 1,734.32   │ 1,895.43│ +203.76  │
+│ telegram     │ 1,094.61   │ 1,243.87 │ 1,150.53   │ 1,895.43│ +800.82  │
+│ direct       │ 1,890.69   │ 1,210.71 │ 1,603.53   │ 0.00    │ -1,890.69│
+└──────────────┴────────────┴──────────┴────────────┴─────────┴──────────┘
+
+Interpretation
+Top channel: organic — 33.3% of total value ($3,317.00)
+  telegram: 19.0% ($1,895.43)
+  google_ads: 19.0% ($1,895.43)
+  yandex_direct: 11.9% ($1,184.64)
+  facebook_ads: 11.9% ($1,184.64)
+  email: 4.8% ($473.86)
+Lowest channel: direct — 0.0% of total value ($0.00)
 ```
-
-### Attribution Comparison
-
-| Channel | Last-Click | Linear | Time Decay | Markov | Delta |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| organic | 1,990.20 | 1,923.86 | 1,981.67 | **3,317.00** | +1,326.80 |
-| google_ads | 1,691.67 | 1,816.06 | 1,734.32 | 1,895.43 | +203.76 |
-| telegram | 1,094.61 | 1,243.87 | 1,150.53 | 1,895.43 | +800.82 |
-| direct | 1,890.69 | 1,210.71 | 1,603.53 | **0.00** | -1,890.69 |
-
-### Interpretation
-
-- **🏆 Top channel:** organic — **33.3%** of total value ($3,317.00)
-- **📉 Lowest channel:** direct — **0.0%** of total value ($0.00)
-
-> 💡 Channels at the top are critical for driving conversions. Consider allocating more budget there.
 
 ---
 
@@ -122,7 +133,7 @@ Total users: 100 | Total touches: 267 | Converted: 100 users (100.0%) | Total re
 | **Last-Click** | All credit goes to the last channel | Reporting to ad platforms |
 | **Linear** | Credit is split evenly across all touches | Understanding overall channel participation |
 | **Time Decay** | More credit to touches closer to conversion | Compromise between Last-Click and Linear |
-| **Markov** | Credit based on "removal effect" | Strategic budget allocation |
+| **Markov (Removal Effect)** | Credit based on "removal effect" — how much conversions drop without this channel | Strategic budget allocation |
 
 ---
 
