@@ -1,7 +1,7 @@
 # 🔍 Attribyt
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Status](https://img.shields.io/badge/status-MVP-orange)
 
 **Privacy-first, on-premises CLI tool for multi-touch attribution.**
 
