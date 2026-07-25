@@ -11,7 +11,7 @@ Attribyt helps marketers and analysts understand which channels truly drive conv
 
 ## 📊 Why Attribyt?
 
-Most ad platforms (Google Ads, Yandex.Direct, etc.) use **Last-Click** attribution — they give 100% of the credit to the last click before a purchase. This is misleading and causes you to:
+Most ad platforms use **Last-Click** attribution — they give 100% of the credit to the last click before a purchase. This is misleading and causes you to:
 
 - **Overpay** for bottom-of-funnel channels (like brand search).
 - **Underinvest** in top-of-funnel channels (like organic content or social media) that actually create demand.
