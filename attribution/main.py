@@ -245,7 +245,7 @@ def interactive_mode():
     console.print(Panel.fit(
         "[bold cyan]Attribyt Interactive Setup[/]\n"
         "Answer a few questions, and we'll run the attribution analysis for you.",
-        title="Hello"
+        title="🚀 Hello"
     ))
 
     source = Prompt.ask(
@@ -257,7 +257,7 @@ def interactive_mode():
     config = {"source": source}
 
     if source == "csv":
-        file = Prompt.ask("Path to CSV file", default="test_data.csv")
+        file = Prompt.ask("Path to CSV file", default="examples/test_data100.csv")
         config["file"] = file
     elif source == "postgres":
         dsn = Prompt.ask("PostgreSQL DSN", default="postgresql://user:pass@localhost/db")
@@ -273,11 +273,13 @@ def interactive_mode():
         config.update({"host": host, "port": port, "user": user, "password": password, "query": query})
 
     console.print("\n[bold]Column mapping[/] — tell us which columns contain the required data.")
-    config["user_col"] = Prompt.ask("Column for user ID", default="user_id")
-    config["timestamp_col"] = Prompt.ask("Column for timestamp", default="timestamp")
-    config["channel_col"] = Prompt.ask("Column for channel", default="channel")
-    config["event_col"] = Prompt.ask("Column for event type", default="event_type")
-    config["revenue_col"] = Prompt.ask("Column for revenue", default="revenue")
+    console.print("[italic]💡 Example for test file: client_id, event_time, traffic_source, action, amount[/]")
+    
+    config["user_col"] = Prompt.ask("Column for user ID", default="client_id")
+    config["timestamp_col"] = Prompt.ask("Column for timestamp", default="event_time")
+    config["channel_col"] = Prompt.ask("Column for channel", default="traffic_source")
+    config["event_col"] = Prompt.ask("Column for event type", default="action")
+    config["revenue_col"] = Prompt.ask("Column for revenue", default="amount")
 
     model = Prompt.ask(
         "Attribution model",
@@ -287,6 +289,7 @@ def interactive_mode():
     config["model"] = model
 
     config["sankey"] = Confirm.ask("Generate Sankey diagram?", default=True)
+    
     export = Prompt.ask("Export results to CSV? (leave empty to skip)", default="")
     if export:
         config["export"] = export
@@ -318,11 +321,11 @@ def run(
     query: str = typer.Option(None, "--query", help="SQL query to fetch data"),
     table: str = typer.Option("events", "--table", help="Table name (if no query)"),
     model: str = typer.Option("both", "--model", help="Model: markov, last-click, linear, time-decay, both"),
-    user_col: str = typer.Option("user_id", "--user-col", help="Column name for user ID"),
-    timestamp_col: str = typer.Option("timestamp", "--timestamp-col", help="Column name for timestamp"),
-    channel_col: str = typer.Option("channel", "--channel-col", help="Column name for channel"),
-    event_col: str = typer.Option("event_type", "--event-col", help="Column name for event type"),
-    revenue_col: str = typer.Option("revenue", "--revenue-col", help="Column name for revenue"),
+    user_id: str = typer.Option("user_id", "--user-id", help="Column name for user ID"),
+    timestamp: str = typer.Option("timestamp", "--timestamp", help="Column name for timestamp"),
+    channel: str = typer.Option("channel", "--channel", help="Column name for channel"),
+    event: str = typer.Option("event_type", "--event", help="Column name for event type"),
+    revenue: str = typer.Option("revenue", "--revenue", help="Column name for revenue"),
     start_date: str = typer.Option(None, "--start", help="Start date (YYYY-MM-DD)"),
     end_date: str = typer.Option(None, "--end", help="End date (YYYY-MM-DD)"),
     sankey: bool = typer.Option(False, "--sankey", help="Generate Sankey diagram (HTML)"),
@@ -339,11 +342,11 @@ def run(
         "query": query,
         "table": table,
         "model": model,
-        "user_col": user_col,
-        "timestamp_col": timestamp_col,
-        "channel_col": channel_col,
-        "event_col": event_col,
-        "revenue_col": revenue_col,
+        "user_col": user_id,
+        "timestamp_col": timestamp,
+        "channel_col": channel,
+        "event_col": event,
+        "revenue_col": revenue,
         "start_date": start_date,
         "end_date": end_date,
         "sankey": sankey,
