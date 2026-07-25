@@ -1,0 +1,7 @@
+polars
+typer
+rich
+plotly
+sqlalchemy
+psycopg2-binary
+clickhouse-connect
