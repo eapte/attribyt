@@ -44,6 +44,20 @@ at a glance.
 - **CSV, PostgreSQL, and ClickHouse** as data sources
 
 
+## Quick start (Docker)
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+git clone https://github.com/<your-username>/attribyt.git
+cd attribyt
+docker compose up --build
+```
+
+Open **http://localhost:8080** — upload a CSV (a sample file is included
+in `examples/test_data100.csv`) and run the analysis.
+
+
 ---
 
 ## 📁 Project Structure
