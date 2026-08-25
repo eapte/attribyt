@@ -72,6 +72,13 @@ MIT License — free for personal and commercial use.
 
 ---
 
+
+<img width="1451" height="682" alt="image" src="https://github.com/user-attachments/assets/c89b2ee6-8aae-4fa0-9527-deb184c6ad0c" />
+
+<img width="842" height="1199" alt="image" src="https://github.com/user-attachments/assets/79f6b4d9-3b9a-4a62-a30d-53526a910a7f" />
+
+
+
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/eapte/attribyt)
