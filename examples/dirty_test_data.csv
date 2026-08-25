@@ -1,0 +1,23 @@
+client_id,event_time,traffic_source,action,amount
+user_001,2026-07-20 10:00:00,google_ads,click,0
+user_001,2026-07-20 10:30:00,email,purchase,120.50
+,2026-07-20 11:00:00,facebook_ads,click,0
+user_002,2026-07-20 11:20:00,facebook_ads,purchase,45.00
+user_003,2026-07-20 12:00:00,,click,0
+user_003,2026-07-20 12:45:00,direct,purchase,200.00
+user_004,not-a-real-date,telegram,click,0
+user_004,2026-07-20 13:25:00,google_ads,purchase,75.50
+user_005,2026-07-20 14:00:00,google_ads,click,0
+user_005,2026-07-20 14:15:00,email,purchase,-60.00
+user_006,2026-07-20 15:00:00,organic,click,0
+user_006,2026-07-20 15:25:00,direct,purchase,150.00
+user_006,2026-07-20 15:25:00,direct,purchase,150.00
+user_007,2026-07-20 16:00:00,email,click,0
+user_007,2026-07-20 16:15:00,direct,purchase,30.00
+user_008,2026-07-20 17:00:00,facebook_ads,click,0
+user_008,2026-07-20 17:20:00,facebook_ads,purchase,90.00
+,,,,
+user_009,2026-07-20 18:00:00,google_ads,click,0
+user_009,2026-07-20 18:50:00,yandex_direct,purchase,180.00
+user_010,2026-07-20 19:00:00,organic,click,0
+user_010,2026-07-20 19:10:00,organic,purchase,35.00

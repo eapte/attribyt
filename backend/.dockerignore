@@ -1,0 +1,5 @@
+venv/
+__pycache__/
+*.pyc
+attribyt.egg-info/
+.pytest_cache/ 
