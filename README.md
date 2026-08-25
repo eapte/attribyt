@@ -49,7 +49,7 @@ at a glance.
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
-git clone https://github.com/<your-username>/attribyt.git
+git clone https://github.com/eapte/attribyt.git
 cd attribyt
 docker compose up --build
 ```
