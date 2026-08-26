@@ -20,7 +20,8 @@ Analyze customer journeys and compare different attribution models —
 
 ---
 
-![alt text](image.png)
+<img width="1716" height="527" alt="image" src="https://github.com/user-attachments/assets/880ab9aa-6cd6-4258-bb13-98b3931d5ee1" />
+
 
 ---
 
@@ -59,7 +60,7 @@ Instead of relying on a single Last-Click metric, Attribyt lets you compare seve
 
 ### 1. Upload & Column Mapping
 
-![alt text](image-1.png)
+<img width="1719" height="718" alt="image" src="https://github.com/user-attachments/assets/6703e834-5b71-4a94-aa0e-14ef6f993533" />
 
 Attribyt automatically detects the columns required for the analysis and allows them to be adjusted before processing.
 
@@ -74,7 +75,7 @@ Typical fields include:
 
 ### 2. Attribution Dashboard
 
-![alt text](image-2.png)
+<img width="1700" height="1150" alt="image" src="https://github.com/user-attachments/assets/360c1869-bf6d-4d50-86c0-9f7e59611c4f" />
 
 The dashboard provides a high-level overview of the analyzed dataset:
 
@@ -90,7 +91,7 @@ It also visualizes how different attribution models distribute revenue across ch
 
 ### 3. Attribution Model Comparison
 
-![alt text](image-3.png)
+<img width="939" height="436" alt="image" src="https://github.com/user-attachments/assets/0fcdbabf-d1e5-43df-a3b7-3d9088c30cc9" />
 
 The same customer journey can produce very different results depending on the attribution methodology.
 
@@ -220,7 +221,7 @@ They can be mapped to the required fields directly through the UI.
 
 ## 📊 Example Result
 
-![alt text](image-4.png)
+<img width="979" height="1112" alt="image" src="https://github.com/user-attachments/assets/cacbe29e-d3c5-40aa-8154-ff8f6b84844b" />
 
 For the included `test_data100.csv` dataset, Attribyt produces the following overview:
 
@@ -253,7 +254,7 @@ For example, **organic** receives the highest Last-Click attribution, while **go
 
 ## 🎬 Demo
 
-<video controls src="Video Project-1.mp4" title="Title"></video>
+
 
 ---
 
