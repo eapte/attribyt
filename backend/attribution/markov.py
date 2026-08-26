@@ -1,4 +1,4 @@
-import random
+import numpy as np
 from collections import defaultdict
 import polars as pl
 
@@ -7,53 +7,69 @@ CONVERSION = "CONVERSION"
 NULL = "NULL"
 
 
-def build_transition_graph(paths: list, outcomes: list) -> dict:
-    """Build transition probabilities between channels, including
-    virtual START, CONVERSION and NULL states."""
+def build_transition_counts(paths: list, outcomes: list) -> dict:
     counts = defaultdict(lambda: defaultdict(int))
-
     for path, converted in zip(paths, outcomes):
         if not path:
             continue
         chain = [START] + path + ([CONVERSION] if converted else [NULL])
         for i in range(len(chain) - 1):
             counts[chain[i]][chain[i + 1]] += 1
+    return counts
 
-    probabilities = {}
+
+def _conversion_probability(counts: dict, excluded_channel: str = None) -> float:
+    """
+    Exact absorption probability of reaching CONVERSION from START,
+    via the fundamental matrix of the absorbing Markov chain:
+    N = (I - Q)^-1, B = N @ R.
+    """
+    transient = {START}
     for src, targets in counts.items():
+        if src not in (CONVERSION, NULL) and src != excluded_channel:
+            transient.add(src)
+        for tgt in targets:
+            if tgt not in (CONVERSION, NULL) and tgt != excluded_channel:
+                transient.add(tgt)
+
+    transient = [START] + sorted(s for s in transient if s != START)
+    index = {s: i for i, s in enumerate(transient)}
+    n = len(transient)
+
+    Q = np.zeros((n, n))
+    R = np.zeros((n, 2))  # columns: [CONVERSION, NULL]
+
+    for src in transient:
+        targets = counts.get(src, {})
         total = sum(targets.values())
-        probabilities[src] = {tgt: c / total for tgt, c in targets.items()}
+        if total == 0:
+            continue
+        for tgt, c in targets.items():
+            p = c / total
+            if tgt == excluded_channel:
+                tgt = NULL
+            if tgt == CONVERSION:
+                R[index[src], 0] += p
+            elif tgt == NULL:
+                R[index[src], 1] += p
+            elif tgt in index:
+                Q[index[src], index[tgt]] += p
 
-    return probabilities
+    try:
+        N = np.linalg.inv(np.eye(n) - Q)
+    except np.linalg.LinAlgError:
+        return 0.0
 
-
-def _simulate_conversion_rate(graph: dict, n_simulations: int, excluded_channel: str, rng: random.Random) -> float:
-    """Monte Carlo random walk over the transition graph. If
-    excluded_channel is set, any transition into it is redirected to
-    NULL, simulating that channel's removal from all journeys."""
-    conversions = 0
-    for _ in range(n_simulations):
-        state = START
-        for _ in range(100):  # safety cap against pathological cycles
-            targets = graph.get(state)
-            if not targets:
-                break
-            next_state = rng.choices(list(targets.keys()), weights=list(targets.values()))[0]
-            if next_state == excluded_channel:
-                next_state = NULL
-            state = next_state
-            if state in (CONVERSION, NULL):
-                break
-        if state == CONVERSION:
-            conversions += 1
-    return conversions / n_simulations if n_simulations else 0.0
+    B = N @ R
+    return float(B[index[START], 0])
 
 
 def markov_attribution(journeys: pl.DataFrame, total_revenue: float,
                         n_simulations: int = 20000, seed: int = 42) -> dict:
-    """Removal-effect attribution via Monte Carlo simulation on the
-    channel transition graph (a practical alternative to solving the
-    absorbing Markov chain analytically)."""
+    """
+    Removal-effect attribution via exact absorbing-Markov-chain algebra.
+    n_simulations/seed kept for backward compatibility, no longer used.
+    """
     if journeys.is_empty():
         return {}
 
@@ -63,20 +79,18 @@ def markov_attribution(journeys: pl.DataFrame, total_revenue: float,
     all_channels = set()
     for path in paths:
         all_channels.update(path)
-
     if not all_channels:
         return {}
 
-    rng = random.Random(seed)
-    graph = build_transition_graph(paths, outcomes)
-    base_rate = _simulate_conversion_rate(graph, n_simulations, excluded_channel=None, rng=rng)
+    counts = build_transition_counts(paths, outcomes)
+    base_rate = _conversion_probability(counts)
 
     if base_rate <= 0:
         return {ch: 0.0 for ch in all_channels}
 
     removal_effects = {}
     for channel in all_channels:
-        rate_without = _simulate_conversion_rate(graph, n_simulations, excluded_channel=channel, rng=rng)
+        rate_without = _conversion_probability(counts, excluded_channel=channel)
         effect = (base_rate - rate_without) / base_rate
         removal_effects[channel] = max(effect, 0.0)
 
@@ -84,51 +98,58 @@ def markov_attribution(journeys: pl.DataFrame, total_revenue: float,
     if total_effect > 0:
         for channel in removal_effects:
             removal_effects[channel] = (removal_effects[channel] / total_effect) * total_revenue
+    else:
+        removal_effects = {ch: 0.0 for ch in removal_effects}
 
     return removal_effects
 
 
 def calculate_last_click(journeys: pl.DataFrame, total_revenue: float) -> dict:
+    """Credits each conversion's own revenue to its last touchpoint —
+    not an equal share of the average order value."""
+    converting = journeys.filter(pl.col("has_conversion"))
     last_clicks = defaultdict(float)
-    total_paths = len(journeys)
-    if total_paths == 0:
+    if len(converting) == 0:
         return {}
 
-    for path in journeys["journey"].to_list():
+    for row in converting.iter_rows(named=True):
+        path = row["journey"]
         if path:
-            last_clicks[path[-1]] += 1.0
-
-    for ch in last_clicks:
-        last_clicks[ch] = (last_clicks[ch] / total_paths) * total_revenue
+            last_clicks[path[-1]] += row["total_revenue"]
 
     return dict(last_clicks)
 
 
 def calculate_linear(journeys: pl.DataFrame, total_revenue: float) -> dict:
+    """Splits each conversion's own revenue evenly across its touches —
+    not an equal share of the average order value."""
+    converting = journeys.filter(pl.col("has_conversion"))
     touches = defaultdict(float)
-    total_paths = len(journeys)
-    if total_paths == 0:
+    if len(converting) == 0:
         return {}
 
-    for path in journeys["journey"].to_list():
+    for row in converting.iter_rows(named=True):
+        path = row["journey"]
+        revenue = row["total_revenue"]
         if path:
-            share = 1.0 / len(path)
+            share = revenue / len(path)
             for ch in path:
                 touches[ch] += share
-
-    for ch in touches:
-        touches[ch] = (touches[ch] / total_paths) * total_revenue
 
     return dict(touches)
 
 
 def calculate_time_decay(journeys: pl.DataFrame, total_revenue: float, decay: float = 0.5) -> dict:
+    """Weights each conversion's own revenue toward its most recent
+    touches — not an equal share of the average order value."""
+    converting = journeys.filter(pl.col("has_conversion"))
     touches = defaultdict(float)
-    total_paths = len(journeys)
-    if total_paths == 0:
+    if len(converting) == 0:
         return {}
 
-    for path in journeys["journey"].to_list():
+    for row in converting.iter_rows(named=True):
+        path = row["journey"]
+        revenue = row["total_revenue"]
         if not path:
             continue
         n = len(path)
@@ -137,9 +158,6 @@ def calculate_time_decay(journeys: pl.DataFrame, total_revenue: float, decay: fl
         if total_weight > 0:
             weights = [w / total_weight for w in weights]
         for ch, w in zip(path, weights):
-            touches[ch] += w
+            touches[ch] += w * revenue
 
-    for ch in touches:
-        touches[ch] = (touches[ch] / total_paths) * total_revenue
-
-    return dict(touches)
+    return dict(touches) 
