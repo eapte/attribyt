@@ -60,7 +60,7 @@ Instead of relying on a single Last-Click metric, Attribyt lets you compare seve
 
 ### 1. Upload & Column Mapping
 
-<img width="1719" height="718" alt="image" src="https://github.com/user-attachments/assets/6703e834-5b71-4a94-aa0e-14ef6f993533" />
+<img width="1718" height="680" alt="Screenshot 2026-08-26 055910" src="https://github.com/user-attachments/assets/e103d0bd-b9b4-431b-a905-c349a4e28b22" />
 
 Attribyt automatically detects the columns required for the analysis and allows them to be adjusted before processing.
 
@@ -254,7 +254,7 @@ For example, **organic** receives the highest Last-Click attribution, while **go
 
 ## 🎬 Demo
 
-
+<img width="1920" height="1080" alt="Video Project" src="https://github.com/user-attachments/assets/a74320bb-5e39-42bc-be2b-7afbe9b77db5" />
 
 ---
 
