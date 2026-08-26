@@ -1,17 +1,6 @@
 from pydantic import BaseModel
 
 
-class AnalyzeRequest(BaseModel):
-    model: str = "both"
-    user_col: str = "user_id"
-    timestamp_col: str = "timestamp"
-    channel_col: str = "channel"
-    event_col: str = "event_type"
-    revenue_col: str = "revenue"
-    start_date: str | None = None
-    end_date: str | None = None
-
-
 class SummaryOut(BaseModel):
     total_users: int
     total_touches: int
@@ -36,9 +25,15 @@ class TopPathOut(BaseModel):
     revenue: float
 
 
+class SegmentBreakdownOut(BaseModel):
+    segment: str
+    count: int
+    revenue: float
+
+
 class AnalyzeResponse(BaseModel):
     summary: SummaryOut
     comparison: list[ChannelComparisonOut]
     top_paths: list[TopPathOut]
-    data_quality: dict
-    
+    segment_breakdown: list[SegmentBreakdownOut]
+    data_quality: dict 

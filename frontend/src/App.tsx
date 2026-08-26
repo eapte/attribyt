@@ -2,8 +2,9 @@ import { useState } from "react";
 import FileUpload from "./components/FileUpload";
 import ColumnMappingForm, { guessMapping } from "./components/ColumnMapping";
 import ResultsView from "./components/ResultsView";
-import { analyzeCsv, readCsvHeaders, ApiError } from "./api";
+import { analyzeCsv, fetchHeaders, ApiError } from "./api";
 import type { AnalyzeResponse, ColumnMapping } from "./types";
+import { CURRENCIES } from "./types";
 
 type Stage = "upload" | "mapping" | "results";
 
@@ -12,6 +13,7 @@ export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
+  const [currency, setCurrency] = useState(CURRENCIES[0]);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,17 +21,20 @@ export default function App() {
   async function handleFileSelected(selectedFile: File) {
     setFile(selectedFile);
     setError(null);
+    setLoading(true);
     try {
-      const parsedHeaders = await readCsvHeaders(selectedFile);
+      const parsedHeaders = await fetchHeaders(selectedFile);
       if (parsedHeaders.length === 0) {
-        setError("Could not read CSV headers — check the file format.");
+        setError("Could not read file headers — check the file format.");
         return;
       }
       setHeaders(parsedHeaders);
       setMapping(guessMapping(parsedHeaders));
       setStage("mapping");
-    } catch {
-      setError("Error reading the file.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Error reading the file.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -57,6 +62,22 @@ export default function App() {
     setError(null);
   }
 
+  if (stage === "upload") {
+    return (
+      <div className="app">
+        <div className="hero">
+          <div className="hero-logo">
+            <h1>Attribyt</h1>
+          </div>
+          <p className="tagline">Multi-touch attribution tool — local, private</p>
+          <FileUpload onFileSelected={handleFileSelected} fileName={null} hero />
+          {loading && <p className="hint" style={{ marginTop: 16 }}>Reading file…</p>}
+          {error && <div className="error-banner">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -67,11 +88,9 @@ export default function App() {
       <main>
         <div className="upload-row">
           <FileUpload onFileSelected={handleFileSelected} fileName={file?.name ?? null} />
-          {stage !== "upload" && (
-            <button className="btn-link" onClick={reset}>
-              Reset
-            </button>
-          )}
+          <button className="btn-link" onClick={reset}>
+            Reset
+          </button>
         </div>
 
         {error && <div className="error-banner">{error}</div>}
@@ -79,13 +98,26 @@ export default function App() {
         {stage === "mapping" && mapping && (
           <>
             <ColumnMappingForm headers={headers} mapping={mapping} onChange={setMapping} />
+            <label className="currency-field">
+              <span>Currency</span>
+              <select
+                value={currency.code}
+                onChange={(e) => setCurrency(CURRENCIES.find((c) => c.code === e.target.value)!)}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button className="btn-primary" onClick={handleAnalyze} disabled={loading}>
               {loading ? "Analyzing…" : "Run analysis"}
             </button>
           </>
         )}
 
-        {stage === "results" && result && <ResultsView data={result} />}
+        {stage === "results" && result && <ResultsView data={result} currencySymbol={currency.symbol} />}
       </main>
     </div>
   );

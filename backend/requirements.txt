@@ -1,10 +1,5 @@
 polars
-typer
-rich
-plotly
-sqlalchemy
-psycopg2-binary
-clickhouse-connect
 fastapi
 uvicorn[standard]
-python-multipart 
+python-multipart
+fastexcel 

@@ -2,8 +2,8 @@ export interface ColumnMapping {
   user_col: string;
   timestamp_col: string;
   channel_col: string;
-  event_col: string;
   revenue_col: string;
+  segment_col: string;
 }
 
 export interface SummaryData {
@@ -30,9 +30,23 @@ export interface TopPath {
   revenue: number;
 }
 
+export interface SegmentBreakdown {
+  segment: string;
+  count: number;
+  revenue: number;
+}
+
 export interface AnalyzeResponse {
   summary: SummaryData;
   comparison: ChannelComparison[];
   top_paths: TopPath[];
+  segment_breakdown: SegmentBreakdown[];
   data_quality: { warnings: string[] };
-} 
+}
+
+export const CURRENCIES: { code: string; symbol: string; label: string }[] = [
+  { code: "USD", symbol: "$", label: "USD ($)" },
+  { code: "EUR", symbol: "€", label: "EUR (€)" },
+  { code: "RUB", symbol: "₽", label: "RUB (₽)" },
+  { code: "GBP", symbol: "£", label: "GBP (£)" },
+]; 

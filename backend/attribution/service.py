@@ -1,8 +1,6 @@
 import polars as pl
 
 from attribution.connectors.csv import CSVConnector
-from attribution.connectors.postgres import PostgresConnector
-from attribution.connectors.clickhouse import ClickHouseConnector
 from attribution.journey import build_journeys
 from attribution.markov import (
     markov_attribution,
@@ -15,8 +13,6 @@ from attribution.validation import validate_and_clean
 
 CONNECTORS = {
     "csv": CSVConnector,
-    "postgres": PostgresConnector,
-    "clickhouse": ClickHouseConnector,
 }
 
 
@@ -27,33 +23,20 @@ class AnalysisError(Exception):
 def build_connector_config(config: dict) -> dict:
     source = config["source"]
     if source == "csv":
-        if not config.get("file_path") and not config.get("dataframe") is not None:
+        if not config.get("file_path") and config.get("dataframe") is None:
             raise AnalysisError("A file path or in-memory dataframe is required for csv source")
         return {"file_path": config.get("file_path")}
-    if source == "postgres":
-        if not config.get("dsn"):
-            raise AnalysisError("--dsn is required for postgres source")
-        return {"dsn": config["dsn"], "query": config.get("query"), "table": config.get("table", "events")}
-    if source == "clickhouse":
-        return {
-            "host": config.get("host", "localhost"),
-            "port": config.get("port", 8123),
-            "user": config.get("user", "default"),
-            "password": config.get("password", ""),
-            "query": config.get("query"),
-            "table": config.get("table", "events"),
-        }
     raise AnalysisError(f"Unsupported source: {source}")
 
 
 def run_analysis(config: dict, raw_df: pl.DataFrame = None) -> dict:
     """
-    Core analysis pipeline, independent of CLI or HTTP. Returns a plain
-    dict (JSON-serialisable) with summary, per-model attribution results,
-    top conversion paths, and a data-quality report.
+    Core analysis pipeline. Returns a plain dict (JSON-serialisable) with
+    summary, per-model attribution results, top conversion paths, an
+    optional segment breakdown, and a data-quality report.
 
-    If raw_df is provided (e.g. an uploaded file already parsed by the
-    caller), it is used directly instead of going through a connector.
+    If raw_df is provided (an uploaded file already parsed by the caller),
+    it is used directly instead of going through a connector.
     """
     if raw_df is not None:
         df = raw_df
@@ -67,11 +50,19 @@ def run_analysis(config: dict, raw_df: pl.DataFrame = None) -> dict:
     if df.is_empty():
         raise AnalysisError("No data found for the given source/date range.")
 
+    # Segment column is optional — capture its values under a stable
+    # name *before* the required-column rename, since the user's chosen
+    # segment column name isn't part of the fixed mapping below.
+    segment_col = config.get("segment_col")
+    if segment_col:
+        if segment_col not in df.columns:
+            raise AnalysisError(f"Segment column not found in data: {segment_col}")
+        df = df.rename({segment_col: "_segment"})
+
     mapping = {
         config["user_col"]: "user_id",
         config["timestamp_col"]: "timestamp",
         config["channel_col"]: "channel",
-        config["event_col"]: "event_type",
         config["revenue_col"]: "revenue",
     }
     missing = [c for c in mapping if c not in df.columns]
@@ -115,6 +106,7 @@ def run_analysis(config: dict, raw_df: pl.DataFrame = None) -> dict:
     ]
 
     top_paths = _top_conversion_paths(journeys, limit=15)
+    segment_breakdown = _segment_breakdown(df) if segment_col else []
 
     return {
         "summary": {
@@ -128,6 +120,7 @@ def run_analysis(config: dict, raw_df: pl.DataFrame = None) -> dict:
         },
         "comparison": comparison,
         "top_paths": top_paths,
+        "segment_breakdown": segment_breakdown,
         "data_quality": {
             "warnings": validation.warnings,
         },
@@ -135,9 +128,6 @@ def run_analysis(config: dict, raw_df: pl.DataFrame = None) -> dict:
 
 
 def _top_conversion_paths(journeys: pl.DataFrame, limit: int = 15) -> list[dict]:
-    """Most common converting paths, as a ranked list — a far more
-    readable substitute for a tangled Sankey diagram on channel-heavy
-    data."""
     converting = journeys.filter(pl.col("has_conversion"))
     if converting.is_empty():
         return []
@@ -158,3 +148,35 @@ def _top_conversion_paths(journeys: pl.DataFrame, limit: int = 15) -> list[dict]
         {"path": row["path_label"], "count": row["count"], "revenue": round(row["revenue"], 2)}
         for row in grouped.iter_rows(named=True)
     ]
+
+
+def _segment_breakdown(df: pl.DataFrame, limit: int = 20) -> list[dict]:
+    """
+    Simple total-revenue breakdown by an optional user-chosen segment
+    column (e.g. country, device). Deliberately not cross-multiplied
+    with the attribution models — that combination grows too large to
+    show usefully, and this keeps the feature easy to reason about.
+    """
+    converting = df.filter(pl.col("revenue") > 0)
+    if converting.is_empty():
+        return []
+
+    grouped = (
+        converting
+        .group_by("_segment")
+        .agg(
+            pl.len().alias("count"),
+            pl.col("revenue").sum().alias("revenue"),
+        )
+        .sort("revenue", descending=True)
+        .head(limit)
+    )
+
+    return [
+        {
+            "segment": str(row["_segment"]) if row["_segment"] is not None else "(empty)",
+            "count": row["count"],
+            "revenue": round(row["revenue"], 2),
+        }
+        for row in grouped.iter_rows(named=True)
+    ] 

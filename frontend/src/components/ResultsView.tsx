@@ -1,4 +1,7 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell,
+} from "recharts";
 import type { AnalyzeResponse } from "../types";
 
 const MODEL_LABELS: Record<string, string> = {
@@ -9,17 +12,32 @@ const MODEL_LABELS: Record<string, string> = {
 };
 
 const MODEL_COLORS: Record<string, string> = {
-  last_click: "#94a3b8",
-  linear: "#60a5fa",
-  time_decay: "#38bdf8",
-  markov: "#fbbf24",
+  last_click: "#6b7280",
+  linear: "#38bdf8",
+  time_decay: "#818cf8",
+  markov: "#4ade80",
 };
 
-export default function ResultsView({ data }: { data: AnalyzeResponse }) {
-  const { summary, comparison, top_paths, data_quality } = data;
+const PIE_COLORS = ["#4ade80", "#38bdf8", "#818cf8", "#fbbf24", "#f472b6", "#94a3b8", "#fb923c"];
+
+const AXIS_STYLE = { fontSize: 12, fill: "#8b8d93" };
+const GRID_STROKE = "#2a2b2e";
+const TOOLTIP_STYLE = { background: "#1f2023", border: "1px solid #2a2b2e", borderRadius: 8 };
+const TOOLTIP_LABEL_STYLE = { color: "#e8e9eb" };
+
+export default function ResultsView({ data, currencySymbol }: { data: AnalyzeResponse; currencySymbol: string }) {
+  const { summary, comparison, top_paths, segment_breakdown, data_quality } = data;
   const modelKeys = Object.keys(MODEL_LABELS).filter((k) =>
     comparison.some((row) => row[k as keyof typeof row] !== undefined)
   );
+
+  const fmt = (value: number) => `${currencySymbol}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+
+  const shareKey = modelKeys.includes("markov") ? "markov" : modelKeys[0];
+  const pieData = comparison.map((row) => ({
+    name: row.channel,
+    value: (row[shareKey as keyof typeof row] as number) ?? 0,
+  }));
 
   return (
     <div className="results">
@@ -38,28 +56,41 @@ export default function ResultsView({ data }: { data: AnalyzeResponse }) {
         <SummaryCard label="Users" value={summary.total_users} />
         <SummaryCard label="Touchpoints" value={summary.total_touches} />
         <SummaryCard label="Conversion rate" value={`${summary.conversion_rate.toFixed(1)}%`} />
-        <SummaryCard label="Total revenue" value={`$${summary.total_revenue.toLocaleString()}`} />
-        <SummaryCard
-          label="Avg. order value"
-          value={`$${summary.avg_revenue_per_converting_user.toFixed(2)}`}
-        />
+        <SummaryCard label="Total revenue" value={fmt(summary.total_revenue)} />
+        <SummaryCard label="Avg. order value" value={fmt(summary.avg_revenue_per_converting_user)} />
       </div>
 
       <section>
         <h3>Attribution model comparison</h3>
-        <div className="chart-wrap">
-          <ResponsiveContainer width="100%" height={360}>
-            <BarChart data={comparison}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="channel" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-              <Legend formatter={(key: string) => MODEL_LABELS[key] ?? key} />
-              {modelKeys.map((key) => (
-                <Bar key={key} dataKey={key} fill={MODEL_COLORS[key]} radius={[4, 4, 0, 0]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="chart-row">
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height={340}>
+              <BarChart data={comparison}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                <XAxis dataKey="channel" tick={AXIS_STYLE} />
+                <YAxis tick={AXIS_STYLE} />
+                <Tooltip formatter={(value: number) => fmt(value)} contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} />
+                <Legend formatter={(key: string) => MODEL_LABELS[key] ?? key} wrapperStyle={{ fontSize: 13 }} />
+                {modelKeys.map((key) => (
+                  <Bar key={key} dataKey={key} fill={MODEL_COLORS[key]} radius={[4, 4, 0, 0]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height={340}>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => fmt(value)} contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <table className="comparison-table">
@@ -76,13 +107,37 @@ export default function ResultsView({ data }: { data: AnalyzeResponse }) {
               <tr key={row.channel}>
                 <td>{row.channel}</td>
                 {modelKeys.map((key) => (
-                  <td key={key}>${(row[key as keyof typeof row] as number)?.toFixed(2)}</td>
+                  <td key={key}>{fmt(row[key as keyof typeof row] as number)}</td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
       </section>
+
+      {segment_breakdown.length > 0 && (
+        <section>
+          <h3>Revenue by segment</h3>
+          <table className="comparison-table">
+            <thead>
+              <tr>
+                <th>Segment</th>
+                <th>Conversions</th>
+                <th>Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {segment_breakdown.map((row) => (
+                <tr key={row.segment}>
+                  <td>{row.segment}</td>
+                  <td style={{ textAlign: "right" }}>{row.count}</td>
+                  <td style={{ textAlign: "right" }}>{fmt(row.revenue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       <section>
         <h3>Top converting paths</h3>
@@ -91,7 +146,7 @@ export default function ResultsView({ data }: { data: AnalyzeResponse }) {
             <li key={i}>
               <span className="path-label">{p.path}</span>
               <span className="path-stats">
-                {p.count}x · ${p.revenue.toLocaleString()}
+                {p.count}x · {fmt(p.revenue)}
               </span>
             </li>
           ))}
