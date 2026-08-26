@@ -364,7 +364,7 @@ attribyt/
 
 - Python
 - FastAPI
-- Pandas
+- Polars
 
 ### Infrastructure
 
