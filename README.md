@@ -260,32 +260,40 @@ For example, **organic** receives the highest Last-Click attribution, while **go
 
 ## 🏗️ Architecture
 
-Attribyt is split into two main applications:
-
 ```text
-┌───────────────────────────────────────────┐
-│                  Frontend                 │
-│                                           │
-│       React + TypeScript + Vite           │
-│                                           │
-└───────────────────┬───────────────────────┘
-                    │
-                    │ HTTP API
-                    ▼
-┌───────────────────────────────────────────┐
-│                  Backend                  │
-│                                           │
-│              Python + FastAPI             │
-│                                           │
-│  Validation → Journeys → Attribution      │
-│                                           │
-└───────────────────────────────────────────┘
-                    │
-                    ▼
-              Local dataset
+┌──────────────────────────┐
+│         Frontend         │
+│                          │
+│ React + TypeScript + Vite│
+│         Recharts         │
+└────────────┬─────────────┘
+             │
+          HTTP API
+             │
+             ▼
+┌──────────────────────────┐
+│         Backend          │
+│                          │
+│ Python + FastAPI         │
+│ Uvicorn + Polars         │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│     Data Processing      │
+│                          │
+│ File Reading             │
+│ Validation               │
+│ Customer Journeys        │
+│ Attribution Models       │
+└────────────┬─────────────┘
+             │
+             ▼
+       Analysis Results
 ```
 
-All components are packaged and run using Docker Compose.
+Everything runs locally using Docker Compose.  
+No cloud infrastructure or external data sharing is required.
 
 ---
 
