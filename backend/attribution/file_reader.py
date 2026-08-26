@@ -1,7 +1,7 @@
 import io
 import polars as pl
 
-SUPPORTED_ENCODINGS = ["utf-8-sig", "utf-8", "cp1251", "cp1252", "latin-1"]
+SUPPORTED_ENCODINGS = ["utf-8-sig", "utf-8", "cp1251", "cp1252"]
 CSV_DELIMITERS = [",", ";", "\t"]
 
 
@@ -34,10 +34,16 @@ def _read_csv(raw_bytes: bytes) -> pl.DataFrame:
     text = None
     for encoding in SUPPORTED_ENCODINGS:
         try:
-            text = raw_bytes.decode(encoding)
-            break
+            candidate = raw_bytes.decode(encoding)
         except UnicodeDecodeError:
             continue
+        if "\x00" in candidate:
+            # a NUL byte after decoding means we picked the wrong
+            # encoding (e.g. misread a binary/UTF-16 file as a
+            # single-byte codepage), not real text — keep trying
+            continue
+        text = candidate
+        break
 
     if text is None:
         raise FileReadError("Could not decode file — unrecognized text encoding.")
@@ -49,3 +55,4 @@ def _read_csv(raw_bytes: bytes) -> pl.DataFrame:
         return pl.read_csv(io.StringIO(text), separator=delimiter)
     except Exception as e:
         raise FileReadError(f"Could not parse CSV (tried delimiter '{delimiter}'): {e}") 
+    
