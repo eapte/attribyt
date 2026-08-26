@@ -27,7 +27,7 @@ Analyze customer journeys and compare different attribution models —
 
 ## 📌 Overview
 
-Attribyt is a analytics tool for **multi-touch marketing attribution**.
+Attribyt is an analytics tool for **multi-touch marketing attribution**.
 
 It takes event-level customer journey data and shows how conversion revenue is distributed across marketing channels using different attribution models.
 
@@ -53,6 +53,8 @@ Instead of relying on a single Last-Click metric, Attribyt lets you compare seve
 | 🛣️ | **Converting Paths** | Find the most common channel sequences leading to conversion. |
 | 🔒 | **Privacy First** | Data is processed locally inside Docker containers. |
 | 📈 | **Analytics Dashboard** | View conversion metrics, revenue and attribution results in one place. |
+| 💱 | **Multi-Currency Support** | Display results in USD, EUR, RUB, or GBP. |
+| 🌍 | **Custom Segmentation** | Optionally break down revenue by any extra dimension (country, device, campaign, etc.). |
 
 ---
 
