@@ -44,6 +44,20 @@ at a glance.
 - **CSV, PostgreSQL, and ClickHouse** as data sources
 
 
+## Quick start (Docker)
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+git clone https://github.com/eapte/attribyt.git
+cd attribyt
+docker compose up --build
+```
+
+Open **http://localhost:8080** — upload a CSV (a sample file is included
+in `examples/test_data100.csv`) and run the analysis.
+
+
 ---
 
 ## 📁 Project Structure
@@ -57,6 +71,13 @@ at a glance.
 MIT License — free for personal and commercial use.
 
 ---
+
+
+<img width="1451" height="682" alt="image" src="https://github.com/user-attachments/assets/c89b2ee6-8aae-4fa0-9527-deb184c6ad0c" />
+
+<img width="842" height="1199" alt="image" src="https://github.com/user-attachments/assets/79f6b4d9-3b9a-4a62-a30d-53526a910a7f" />
+
+
 
 ## 🔗 Links
 
