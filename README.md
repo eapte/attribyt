@@ -79,7 +79,7 @@ Typical fields include:
 
 ### 2. Attribution Dashboard
 
-<img width="1700" height="1150" alt="image" src="https://github.com/user-attachments/assets/360c1869-bf6d-4d50-86c0-9f7e59611c4f" />
+<img width="1697" height="1043" alt="image" src="https://github.com/user-attachments/assets/7a24ceef-a70e-4986-8cfb-3721448761b1" />
 
 The dashboard provides a high-level overview of the analyzed dataset:
 
@@ -95,7 +95,7 @@ It also visualizes how different attribution models distribute revenue across ch
 
 ### 3. Attribution Model Comparison
 
-<img width="939" height="436" alt="image" src="https://github.com/user-attachments/assets/0fcdbabf-d1e5-43df-a3b7-3d9088c30cc9" />
+<img width="947" height="431" alt="image" src="https://github.com/user-attachments/assets/e8d12a32-ee5a-439a-b32d-dce3821c8152" />
 
 The same customer journey can produce very different results depending on the attribution methodology.
 
@@ -225,14 +225,14 @@ They can be mapped to the required fields directly through the UI.
 
 ## 📊 Example Result
 
-<img width="979" height="1112" alt="image" src="https://github.com/user-attachments/assets/cacbe29e-d3c5-40aa-8154-ff8f6b84844b" />
+<img width="1047" height="1122" alt="image" src="https://github.com/user-attachments/assets/a4cd3285-bf1a-4f1d-bef5-27a3da342c4b" />
 
 For the included `test_data100.csv` dataset, Attribyt produces the following overview:
 
 | Metric                  |  Value |
 | ----------------------- | -----: |
 | **Users**               |    100 |
-| **Touchpoints**         |    167 |
+| **Touchpoints**         |    267 |
 | **Conversion rate**     | 100.0% |
 | **Total revenue**       | $9,951 |
 | **Average order value** | $99.51 |
@@ -241,13 +241,13 @@ For the included `test_data100.csv` dataset, Attribyt produces the following ove
 
 | Channel       | Last Click |    Linear | Time Decay |    Markov |
 | ------------- | ---------: | --------: | ---------: | --------: |
-| direct        |  $1,890.69 |   $895.59 |  $1,232.03 | $1,162.21 |
-| email         |  $1,094.61 | $1,293.63 |  $1,250.98 | $1,419.38 |
-| facebook_ads  |  $1,293.63 | $1,476.07 |  $1,421.57 | $1,511.23 |
-| google_ads    |  $1,691.67 | $1,874.11 |  $1,791.18 | $1,906.80 |
-| organic       |  $2,089.71 | $1,890.69 |  $1,966.51 | $1,539.10 |
-| telegram      |  $1,094.61 | $1,310.21 |  $1,222.55 | $1,165.57 |
-| yandex_direct |    $796.08 | $1,210.70 |  $1,066.18 | $1,246.71 |
+| direct        |  $2,300    | $1,471.67 |  $1,950.29 | $1,161.61 |
+| email         |  $1,040.05 | $1,171.29 |  $1,098.83 | $1,462.64 |
+| facebook_ads  |  $1,340    | $1,421.67 |  $1,379.67	| $1,555.78 |
+| google_ads    |  $1,550.05 | $1,775.42 |  $1,625.52 | $1,881.03 |
+| organic       |  $1,750    | $1,605.83 |  $1,709.38 | $1,521.8  |
+| telegram      |  $1,070    | $1,257.21 |  $1,138.27 | $1,159.45 |
+| yandex_direct |  $900      | $1,247.92 |  $1,049.05 | $1,208.69 |
 
 The results show how the estimated contribution of each channel changes depending on the attribution methodology.
 
