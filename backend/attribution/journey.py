@@ -13,17 +13,11 @@ def build_journeys(df: pl.DataFrame) -> pl.DataFrame:
     Build one journey per conversion event, plus one trailing journey for
     unconverted touches.
 
-    The row that carries the conversion (revenue > 0) is treated as the
-    *outcome* of the journey, not an extra touchpoint — its channel is
-    already implied by being the point of conversion, so counting it
-    again as a separate touch would double-credit the last channel
-    (this matters for datasets where the purchase event itself is
-    tagged with a traffic_source, same as every click event).
-
-    If no click preceded the conversion in a given segment (the very
-    first event for a user is already a purchase), the conversion's own
-    channel is used as the sole touchpoint — there's nothing else to
-    attribute the revenue to.
+    Every row is counted as its own touchpoint, including the row that
+    carries the conversion (revenue > 0) — this matches the convention
+    used by GA and most multi-touch attribution tools, where each
+    tracked event is a distinct interaction, even if a purchase event
+    happens to carry the same channel tag as the click right before it.
 
     Touches are consumed once a conversion happens, so a user's second
     purchase does not re-include touches already credited to their
@@ -41,12 +35,9 @@ def build_journeys(df: pl.DataFrame) -> pl.DataFrame:
 
         for row in user_data.iter_rows(named=True):
             revenue = row.get("revenue") or 0.0
+            current_path.append(row["channel"])
 
             if revenue > 0:
-                if not current_path:
-                    # no prior click in this segment — attribute to the
-                    # conversion's own channel, there's no alternative
-                    current_path.append(row["channel"])
                 journeys.append({
                     "user_id": uid,
                     "journey": current_path.copy(),
@@ -54,8 +45,6 @@ def build_journeys(df: pl.DataFrame) -> pl.DataFrame:
                     "has_conversion": True,
                 })
                 current_path = []
-            else:
-                current_path.append(row["channel"])
 
         # leftover touches with no conversion after them
         if current_path:
