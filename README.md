@@ -43,24 +43,20 @@ Instead of relying on a single Last-Click metric, Attribyt lets you compare seve
 
 ---
 
-## ✨ Features
+## Features
 
-| | Feature | Description |
-|---|---|---|
-| 📂 | **CSV / XLSX Upload** | Import customer journey data directly into the application. |
-| 🔍 | **Automatic Column Mapping** | Detects relevant columns and lets you correct the mapping manually. |
-| 🧹 | **Data Validation** | Handles malformed and invalid records before analysis. |
-| 📊 | **Multi-Touch Attribution** | Compare four different attribution methodologies. |
-| 💰 | **Revenue Attribution** | See how conversion revenue is distributed between channels. |
-| 🛣️ | **Converting Paths** | Find the most common channel sequences leading to conversion. |
-| 🔒 | **Privacy First** | Data is processed locally inside Docker containers. |
-| 📈 | **Analytics Dashboard** | View conversion metrics, revenue and attribution results in one place. |
-| 💱 | **Multi-Currency Support** | Display results in USD, EUR, RUB, or GBP. |
-| 🌍 | **Custom Segmentation** | Optionally break down revenue by any extra dimension (country, device, campaign, etc.). |
+- **CSV / XLSX upload** — bring in your own customer journey data
+- **Column mapping** — Attribyt guesses which columns are which, but you can fix it if it gets something wrong
+- **Data validation** — malformed rows get cleaned up automatically, with a report of what was dropped or fixed
+- **Four attribution models** — Last Click, Linear, Time Decay, and Markov (removal effect), so you're not stuck relying on one number
+- **Revenue breakdown by channel** and by any custom segment you add (country, device, campaign...)
+- **Top converting paths** — see which channel sequences actually lead to purchases
+- **Runs locally** — everything happens inside your own Docker containers, nothing leaves your machine
+- Multi-currency display (USD, EUR, RUB, GBP)
 
 ---
 
-## 🖥️ Application
+## Application
 
 ### 1. Upload & Column Mapping
 
@@ -103,7 +99,7 @@ Attribyt makes this difference visible by comparing all models side by side.
 
 ---
 
-## 🧠 Attribution Models
+## Attribution Models
 
 ### Last Click
 
@@ -174,7 +170,7 @@ This makes Markov attribution useful for understanding the **incremental contrib
 
 ---
 
-## 🔄 How It Works
+## How It Works
 
 ```mermaid
 flowchart LR
@@ -195,7 +191,7 @@ flowchart LR
 
 ---
 
-## 📥 Input Data
+## Input Data
 
 Attribyt works with event-level customer journey data.
 
@@ -223,7 +219,7 @@ They can be mapped to the required fields directly through the UI.
 
 ---
 
-## 📊 Example Result
+## Example Result
 
 <img width="1047" height="1122" alt="image" src="https://github.com/user-attachments/assets/a4cd3285-bf1a-4f1d-bef5-27a3da342c4b" />
 
@@ -256,13 +252,13 @@ For example, **organic** receives the highest Last-Click attribution, while **go
 
 ---
 
-## 🎬 Demo
+## Demo
 
 <img width="1920" height="1080" alt="Video Project" src="https://github.com/user-attachments/assets/a74320bb-5e39-42bc-be2b-7afbe9b77db5" />
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```text
 ┌──────────────────────────┐
@@ -301,7 +297,7 @@ No cloud infrastructure or external data sharing is required.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 attribyt/
@@ -354,7 +350,7 @@ attribyt/
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 
@@ -376,7 +372,7 @@ attribyt/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Requirements
 
@@ -407,7 +403,7 @@ and run the analysis.
 
 ---
 
-## 🔒 Privacy
+## Privacy
 
 Attribyt follows a **privacy-first, local-first** approach.
 
@@ -424,7 +420,7 @@ Your data stays on your machine.
 
 ---
 
-## 🧪 Example Datasets
+## Example Datasets
 
 The repository includes sample datasets for testing:
 
@@ -443,19 +439,9 @@ The example files can be used to test:
 - attribution models;
 - dashboard visualizations.
 
-
-
-## 🗺️ Roadmap
-
-- [ ] Interactive customer journey visualization
-- [ ] Configurable attribution windows
-- [ ] Export attribution results
-- [ ] More detailed conversion funnel analysis
-- [ ] Performance improvements for larger datasets
-
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the **MIT License**.
 
@@ -463,7 +449,7 @@ You are free to use, modify, and distribute the software for personal and commer
 
 ---
 
-## 🔗 Links
+## Links
 
 - **Repository:** https://github.com/eapte/attribyt
 - **Issues:** https://github.com/eapte/attribyt/issues
