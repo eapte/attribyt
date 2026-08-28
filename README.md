@@ -59,7 +59,8 @@ Instead of relying on a single Last-Click metric, Attribyt lets you compare seve
 
 ### 1. Upload & Column Mapping
 
-<img width="1718" height="680" alt="Screenshot 2026-08-26 055910" src="https://github.com/user-attachments/assets/e103d0bd-b9b4-431b-a905-c349a4e28b22" />
+<img width="1622" height="970" alt="617f4621-4bc2-41b9-97d8-f3dc0af401b7" src="https://github.com/user-attachments/assets/43f05301-b0b6-44f8-828d-344ae4076f8c" />
+<img width="1618" height="972" alt="b20928f1-86e5-4bda-a96e-552952ec3074" src="https://github.com/user-attachments/assets/2184ea23-dc31-4276-94fb-9951212c9533" />
 
 Attribyt automatically detects the columns required for the analysis and allows them to be adjusted before processing.
 
