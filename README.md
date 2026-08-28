@@ -22,8 +22,7 @@ Analyze customer journeys and compare different attribution models —
 
 ---
 
-<img width="1716" height="527" alt="image" src="https://github.com/user-attachments/assets/880ab9aa-6cd6-4258-bb13-98b3931d5ee1" />
-
+<img width="1622" height="970" alt="7f9ea83f-a446-49d5-87f2-4d87b9fe0319" src="https://github.com/user-attachments/assets/53a63ba3-0685-4cac-8ac4-0d5769e2b6c0" />
 
 ---
 
