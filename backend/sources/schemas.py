@@ -20,6 +20,7 @@ class SourceResponse(BaseModel):
     name: str
     sync_mode: SyncMode
     status: str
+    last_error: Optional[str] = None
     cursor: Optional[str] = None
     last_sync: Optional[datetime] = None
     created_at: datetime 

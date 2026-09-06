@@ -7,11 +7,9 @@ import uuid
 
 class SourceType(str, Enum):
     """Types of external data sources Attribyt can connect to."""
-    CSV = "csv"
-    AVITO = "avito"
-    SHOPIFY = "shopify"
-    OZON = "ozon"
-    API = "api"
+    DATABASE = "database"
+    REST_API = "rest_api"
+    WEBHOOK = "webhook"
 
 
 class SyncMode(str, Enum):
@@ -23,7 +21,7 @@ class SyncMode(str, Enum):
 
 @dataclass
 class Source:
-    """Represents a connected external data source (e.g. Avito, Shopify)."""
+    """Represents a connected external data source."""
     type: SourceType
     name: str
     credentials: dict = field(default_factory=dict)  # will be encrypted later
@@ -32,7 +30,8 @@ class Source:
     last_sync: Optional[datetime] = None
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: datetime = field(default_factory=datetime.utcnow)
-    status: str = "disconnected"  # disconnected | connected | error
+    status: str = "disconnected"  # disconnected | connected | pending | error
+    last_error: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Serialize the source to a JSON-friendly dict."""
@@ -51,4 +50,5 @@ class Source:
         d["sync_mode"] = SyncMode(d["sync_mode"])
         d["created_at"] = datetime.fromisoformat(d["created_at"])
         d["last_sync"] = datetime.fromisoformat(d["last_sync"]) if d.get("last_sync") else None
+        d.setdefault("last_error", None)
         return cls(**d) 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FileUpload from "../components/FileUpload";
 import ColumnMappingForm, { guessMapping } from "../components/ColumnMapping";
 import ResultsView from "../components/ResultsView";
@@ -9,8 +9,18 @@ import { CURRENCIES } from "../types";
 type Stage = "idle" | "mapping" | "results";
 type InputMode = "file" | "source";
 
+interface Source {
+  id: string;
+  type: string;
+  name: string;
+  status: string;
+  last_sync?: string | null;
+}
+
 export default function AttributionPage() {
   const [mode, setMode] = useState<InputMode>("file");
+
+  // File upload flow state
   const [stage, setStage] = useState<Stage>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -19,6 +29,24 @@ export default function AttributionPage() {
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Source-based flow state
+  const [sources, setSources] = useState<Source[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+  const [sourceResult, setSourceResult] = useState<AnalyzeResponse | null>(null);
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode !== "source") return;
+    setSourcesLoading(true);
+    fetch("/api/sources")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((all: Source[]) => setSources(all.filter((s) => s.type === "database")))
+      .catch(() => setSources([]))
+      .finally(() => setSourcesLoading(false));
+  }, [mode]);
 
   async function handleFileSelected(selectedFile: File) {
     setFile(selectedFile);
@@ -67,6 +95,29 @@ export default function AttributionPage() {
   function switchMode(next: InputMode) {
     setMode(next);
     reset();
+    setSourceResult(null);
+    setSourceError(null);
+    setSelectedSourceId(null);
+  }
+
+  async function handleAnalyzeSource(sourceId: string) {
+    setSelectedSourceId(sourceId);
+    setSourceLoading(true);
+    setSourceError(null);
+    setSourceResult(null);
+    try {
+      const res = await fetch(`/api/sources/${sourceId}/analyze`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setSourceError(data.detail || "Analysis failed.");
+        return;
+      }
+      setSourceResult(data);
+    } catch {
+      setSourceError("Network error while analyzing.");
+    } finally {
+      setSourceLoading(false);
+    }
   }
 
   return (
@@ -92,9 +143,45 @@ export default function AttributionPage() {
       </div>
 
       {mode === "source" && (
-        <div className="empty-state">
-          <h3>No sources available yet</h3>
-          <p>Connect a source on the Data Sources page — syncing data from sources isn't implemented yet</p>
+        <div className="workspace">
+          {sourcesLoading && <p className="hint">Loading sources...</p>}
+
+          {!sourcesLoading && sources.length === 0 && (
+            <div className="empty-state">
+              <h3>No database sources connected</h3>
+              <p>Connect a Database source on the Data Sources page to analyze it here</p>
+            </div>
+          )}
+
+          {!sourcesLoading && sources.length > 0 && (
+            <>
+              <h3 className="section-label">Choose a source</h3>
+              <div className="source-picker">
+                {sources.map((s) => (
+                  <button
+                    key={s.id}
+                    className={"source-picker-item" + (selectedSourceId === s.id ? " active" : "")}
+                    onClick={() => handleAnalyzeSource(s.id)}
+                    disabled={sourceLoading}
+                  >
+                    <div style={{ fontWeight: 600 }}>{s.name}</div>
+                    <div className="hint">
+                      {s.status}
+                      {s.last_sync ? ` · last sync ${new Date(s.last_sync).toLocaleString()}` : " · never synced"}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {sourceLoading && <p className="hint" style={{ marginTop: 16 }}>Analyzing...</p>}
+              {sourceError && <div className="error-banner">{sourceError}</div>}
+              {sourceResult && (
+                <div style={{ marginTop: 20 }}>
+                  <ResultsView data={sourceResult} currencySymbol="$" />
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -148,4 +235,4 @@ export default function AttributionPage() {
       )}
     </div>
   );
-}
+} 
