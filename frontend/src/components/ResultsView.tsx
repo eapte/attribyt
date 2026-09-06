@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell,
@@ -25,19 +26,50 @@ const GRID_STROKE = "#2a2b2e";
 const TOOLTIP_STYLE = { background: "#1f2023", border: "1px solid #2a2b2e", borderRadius: 8 };
 const TOOLTIP_LABEL_STYLE = { color: "#e8e9eb" };
 
+type ModelKey = keyof typeof MODEL_LABELS;
+type ModelFilter = "all" | ModelKey;
+
 export default function ResultsView({ data, currencySymbol }: { data: AnalyzeResponse; currencySymbol: string }) {
   const { summary, comparison, top_paths, segment_breakdown, data_quality } = data;
   const modelKeys = Object.keys(MODEL_LABELS).filter((k) =>
     comparison.some((row) => row[k as keyof typeof row] !== undefined)
-  );
+  ) as ModelKey[];
+
+  const [activeModel, setActiveModel] = useState<ModelFilter>("all");
 
   const fmt = (value: number) => `${currencySymbol}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
-  const shareKey = modelKeys.includes("markov") ? "markov" : modelKeys[0];
+  const shareKey: ModelKey = activeModel === "all"
+    ? (modelKeys.includes("markov" as ModelKey) ? ("markov" as ModelKey) : modelKeys[0])
+    : activeModel;
+
   const pieData = comparison.map((row) => ({
     name: row.channel,
     value: (row[shareKey as keyof typeof row] as number) ?? 0,
   }));
+
+  // Best channel per model column — used for highlighting, always computed
+  // regardless of which view is active.
+  const bestByModel: Record<string, string> = {};
+  for (const key of modelKeys) {
+    let best = comparison[0]?.channel;
+    let bestValue = -Infinity;
+    for (const row of comparison) {
+      const v = (row[key as keyof typeof row] as number) ?? -Infinity;
+      if (v > bestValue) {
+        bestValue = v;
+        best = row.channel;
+      }
+    }
+    bestByModel[key] = best;
+  }
+
+  // For the single-model chart view, sort channels by that model's value descending
+  const sortedForModel = activeModel !== "all"
+    ? [...comparison].sort(
+        (a, b) => ((b[activeModel as keyof typeof b] as number) ?? 0) - ((a[activeModel as keyof typeof a] as number) ?? 0)
+      )
+    : comparison;
 
   return (
     <div className="results">
@@ -61,17 +93,45 @@ export default function ResultsView({ data, currencySymbol }: { data: AnalyzeRes
       </div>
 
       <section>
-        <h3>Attribution model comparison</h3>
+        <div className="section-title-row">
+          <h3>Attribution model comparison</h3>
+          <div className="model-toggle">
+            <button
+              className={"model-toggle-btn" + (activeModel === "all" ? " active" : "")}
+              onClick={() => setActiveModel("all")}
+            >
+              All models
+            </button>
+            {modelKeys.map((key) => (
+              <button
+                key={key}
+                className={"model-toggle-btn" + (activeModel === key ? " active" : "")}
+                onClick={() => setActiveModel(key)}
+              >
+                {MODEL_LABELS[key]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {activeModel !== "all" && (
+          <p className="hint" style={{ marginTop: -8, marginBottom: 16 }}>
+            Best channel under {MODEL_LABELS[activeModel]}: <strong style={{ color: "var(--accent)" }}>{bestByModel[activeModel]}</strong>
+          </p>
+        )}
+
         <div className="chart-row">
           <div className="chart-wrap">
             <ResponsiveContainer width="100%" height={340}>
-              <BarChart data={comparison}>
+              <BarChart data={sortedForModel}>
                 <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
                 <XAxis dataKey="channel" tick={AXIS_STYLE} />
                 <YAxis tick={AXIS_STYLE} />
                 <Tooltip formatter={(value: number) => fmt(value)} contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} />
-                <Legend formatter={(key: string) => MODEL_LABELS[key] ?? key} wrapperStyle={{ fontSize: 13 }} />
-                {modelKeys.map((key) => (
+                {activeModel === "all" && (
+                  <Legend formatter={(key: string) => MODEL_LABELS[key] ?? key} wrapperStyle={{ fontSize: 13 }} />
+                )}
+                {(activeModel === "all" ? modelKeys : [activeModel]).map((key) => (
                   <Bar key={key} dataKey={key} fill={MODEL_COLORS[key]} radius={[4, 4, 0, 0]} />
                 ))}
               </BarChart>
@@ -107,7 +167,12 @@ export default function ResultsView({ data, currencySymbol }: { data: AnalyzeRes
               <tr key={row.channel}>
                 <td>{row.channel}</td>
                 {modelKeys.map((key) => (
-                  <td key={key}>{fmt(row[key as keyof typeof row] as number)}</td>
+                  <td
+                    key={key}
+                    className={bestByModel[key] === row.channel ? "cell-best" : undefined}
+                  >
+                    {fmt(row[key as keyof typeof row] as number)}
+                  </td>
                 ))}
               </tr>
             ))}

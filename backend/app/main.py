@@ -1,10 +1,13 @@
 import polars as pl
-from fastapi import FastAPI, UploadFile, Form, HTTPException
+from fastapi import FastAPI, UploadFile, Form, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
 from attribution.service import run_analysis, AnalysisError
 from attribution.file_reader import read_tabular_file, FileReadError
 from app.schemas import AnalyzeResponse
+from sources.models import Source
+from sources.schemas import SourceCreate, SourceResponse
+from sources.service import SourceService
 
 app = FastAPI(title="Attribyt API", version="0.4.0")
 
@@ -16,6 +19,36 @@ app.add_middleware(
 )
 
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+
+source_service = SourceService()
+sources_router = APIRouter(prefix="/api/sources", tags=["sources"])
+
+
+@sources_router.get("", response_model=list[SourceResponse])
+def list_sources():
+    """Return all connected sources."""
+    return [SourceResponse(**s.to_dict()) for s in source_service.list_sources()]
+
+
+@sources_router.post("", response_model=SourceResponse)
+def create_source(payload: SourceCreate):
+    """Register a new source (credentials are stored but never returned)."""
+    source = Source(
+        type=payload.type,
+        name=payload.name,
+        credentials=payload.credentials,
+        sync_mode=payload.sync_mode,
+    )
+    source_service.create_source(source)
+    return SourceResponse(**source.to_dict())
+
+
+@sources_router.delete("/{source_id}")
+def delete_source(source_id: str):
+    """Remove a source by id."""
+    if not source_service.delete_source(source_id):
+        raise HTTPException(status_code=404, detail="Source not found")
+    return {"ok": True}
 
 
 async def _read_upload(file: UploadFile) -> pl.DataFrame:
@@ -70,4 +103,7 @@ async def analyze(
     except AnalysisError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    return result 
+    return result
+
+
+app.include_router(sources_router) 

@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY attribution/ ./attribution/
 COPY app/ ./app/
+COPY sources/ ./sources/
 
 EXPOSE 8000
 
