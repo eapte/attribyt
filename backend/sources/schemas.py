@@ -23,4 +23,15 @@ class SourceResponse(BaseModel):
     last_error: Optional[str] = None
     cursor: Optional[str] = None
     last_sync: Optional[datetime] = None
-    created_at: datetime 
+    created_at: datetime
+
+
+class SourceAnalyzeRequest(BaseModel):
+    """Column mapping for running analysis on a source's synced data —
+    mirrors the mapping used for file uploads, since a source's raw
+    columns rarely match Attribyt's standard names."""
+    user_col: str
+    timestamp_col: str
+    channel_col: str
+    revenue_col: str
+    segment_col: Optional[str] = None

@@ -8,6 +8,7 @@ import { CURRENCIES } from "../types";
 
 type Stage = "idle" | "mapping" | "results";
 type InputMode = "file" | "source";
+type SourceStage = "picking" | "mapping" | "results";
 
 interface Source {
   id: string;
@@ -16,6 +17,8 @@ interface Source {
   status: string;
   last_sync?: string | null;
 }
+
+const SYNCABLE_TYPES = ["database", "rest_api"];
 
 export default function AttributionPage() {
   const [mode, setMode] = useState<InputMode>("file");
@@ -33,7 +36,10 @@ export default function AttributionPage() {
   // Source-based flow state
   const [sources, setSources] = useState<Source[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [sourceStage, setSourceStage] = useState<SourceStage>("picking");
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+  const [sourceColumns, setSourceColumns] = useState<string[]>([]);
+  const [sourceMapping, setSourceMapping] = useState<ColumnMapping | null>(null);
   const [sourceResult, setSourceResult] = useState<AnalyzeResponse | null>(null);
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -43,7 +49,7 @@ export default function AttributionPage() {
     setSourcesLoading(true);
     fetch("/api/sources")
       .then((res) => (res.ok ? res.json() : []))
-      .then((all: Source[]) => setSources(all.filter((s) => s.type === "database")))
+      .then((all: Source[]) => setSources(all))
       .catch(() => setSources([]))
       .finally(() => setSourcesLoading(false));
   }, [mode]);
@@ -95,24 +101,62 @@ export default function AttributionPage() {
   function switchMode(next: InputMode) {
     setMode(next);
     reset();
-    setSourceResult(null);
-    setSourceError(null);
-    setSelectedSourceId(null);
+    resetSourceFlow();
   }
 
-  async function handleAnalyzeSource(sourceId: string) {
+  function resetSourceFlow() {
+    setSourceStage("picking");
+    setSelectedSourceId(null);
+    setSourceColumns([]);
+    setSourceMapping(null);
+    setSourceResult(null);
+    setSourceError(null);
+  }
+
+  async function handlePickSource(sourceId: string) {
     setSelectedSourceId(sourceId);
+    setSourceError(null);
+    setSourceLoading(true);
+    try {
+      const res = await fetch(`/api/sources/${sourceId}/columns`);
+      const data = await res.json();
+      if (!res.ok) {
+        setSourceError(data.detail || "Could not read columns from this source.");
+        return;
+      }
+      setSourceColumns(data.columns);
+      setSourceMapping(guessMapping(data.columns));
+      setSourceStage("mapping");
+    } catch {
+      setSourceError("Network error while loading source columns.");
+    } finally {
+      setSourceLoading(false);
+    }
+  }
+
+  async function handleAnalyzeSource() {
+    if (!selectedSourceId || !sourceMapping) return;
     setSourceLoading(true);
     setSourceError(null);
-    setSourceResult(null);
     try {
-      const res = await fetch(`/api/sources/${sourceId}/analyze`, { method: "POST" });
+      const res = await fetch(`/api/sources/${selectedSourceId}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_col: sourceMapping.user_col,
+          timestamp_col: sourceMapping.timestamp_col,
+          channel_col: sourceMapping.channel_col,
+          revenue_col: sourceMapping.revenue_col,
+          segment_col: sourceMapping.segment_col || null,
+        }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setSourceError(data.detail || "Analysis failed.");
         return;
       }
       setSourceResult(data);
+      setSourceStage("results");
     } catch {
       setSourceError("Network error while analyzing.");
     } finally {
@@ -148,38 +192,69 @@ export default function AttributionPage() {
 
           {!sourcesLoading && sources.length === 0 && (
             <div className="empty-state">
-              <h3>No database sources connected</h3>
-              <p>Connect a Database source on the Data Sources page to analyze it here</p>
+              <h3>No sources connected</h3>
+              <p>Connect a source on the Data Sources page to analyze it here</p>
             </div>
           )}
 
-          {!sourcesLoading && sources.length > 0 && (
+          {!sourcesLoading && sources.length > 0 && sourceStage === "picking" && (
             <>
               <h3 className="section-label">Choose a source</h3>
               <div className="source-picker">
-                {sources.map((s) => (
-                  <button
-                    key={s.id}
-                    className={"source-picker-item" + (selectedSourceId === s.id ? " active" : "")}
-                    onClick={() => handleAnalyzeSource(s.id)}
-                    disabled={sourceLoading}
-                  >
-                    <div style={{ fontWeight: 600 }}>{s.name}</div>
-                    <div className="hint">
-                      {s.status}
-                      {s.last_sync ? ` · last sync ${new Date(s.last_sync).toLocaleString()}` : " · never synced"}
-                    </div>
-                  </button>
-                ))}
+                {sources.map((s) => {
+                  const syncable = SYNCABLE_TYPES.includes(s.type);
+                  return (
+                    <button
+                      key={s.id}
+                      className="source-picker-item"
+                      onClick={() => syncable && handlePickSource(s.id)}
+                      disabled={sourceLoading || !syncable}
+                      title={!syncable ? "Webhook sources can't be analyzed on demand yet — they need to receive events first" : undefined}
+                    >
+                      <div style={{ fontWeight: 600 }}>{s.name}</div>
+                      <div className="hint">
+                        {s.type}
+                        {" · "}
+                        {syncable
+                          ? s.last_sync
+                            ? `last sync ${new Date(s.last_sync).toLocaleString()}`
+                            : "never synced"
+                          : "waiting for events"}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-
-              {sourceLoading && <p className="hint" style={{ marginTop: 16 }}>Analyzing...</p>}
+              {sourceLoading && <p className="hint" style={{ marginTop: 16 }}>Loading columns...</p>}
               {sourceError && <div className="error-banner">{sourceError}</div>}
-              {sourceResult && (
-                <div style={{ marginTop: 20 }}>
-                  <ResultsView data={sourceResult} currencySymbol="$" />
-                </div>
-              )}
+            </>
+          )}
+
+          {sourceStage === "mapping" && sourceMapping && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 className="section-label" style={{ margin: 0 }}>Map columns</h3>
+                <button className="btn-link" onClick={resetSourceFlow}>
+                  ← Choose a different source
+                </button>
+              </div>
+              <p className="hint" style={{ marginTop: -8, marginBottom: 16 }}>
+                Match this source's real column names to what Attribyt expects
+              </p>
+              <ColumnMappingForm headers={sourceColumns} mapping={sourceMapping} onChange={setSourceMapping} />
+              {sourceError && <div className="error-banner">{sourceError}</div>}
+              <button className="btn-primary" onClick={handleAnalyzeSource} disabled={sourceLoading}>
+                {sourceLoading ? "Analyzing…" : "Run analysis"}
+              </button>
+            </>
+          )}
+
+          {sourceStage === "results" && sourceResult && (
+            <>
+              <button className="btn-link" onClick={resetSourceFlow} style={{ marginBottom: 16 }}>
+                ← Choose a different source
+              </button>
+              <ResultsView data={sourceResult} currencySymbol="$" />
             </>
           )}
         </div>

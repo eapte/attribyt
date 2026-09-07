@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Plug, BarChart3, Database, Package, ListOrdered, Zap } from "lucide-react";
 import {
-  Plug, BarChart3, Database, LineChart, PieChart as PieChartIcon,
-  Package, ListOrdered, Zap,
-} from "lucide-react";
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, Legend,
+} from "recharts";
+import BusinessFlow from "../components/BusinessFlow";
+import LiveActivity from "../components/LiveActivity";
 
 interface Source {
   id: string;
@@ -12,27 +15,70 @@ interface Source {
   status: string;
 }
 
-const STAT_PLACEHOLDERS = [
-  { label: "Total Revenue" },
-  { label: "Orders" },
-  { label: "Conversion Rate" },
-  { label: "Customers" },
-  { label: "Avg. Order Value" },
-];
+interface FlowData {
+  total_rows: number;
+  unique_users: number;
+  conversions: number;
+}
+
+interface SummaryData {
+  available: boolean;
+  reason?: string;
+  total_revenue?: number;
+  orders?: number;
+  conversion_rate?: number;
+  customers?: number;
+  avg_order_value?: number;
+  channel_breakdown?: { channel: string; revenue: number }[];
+  timeline?: { date: string; revenue: number; orders: number }[];
+}
+
+const PIE_COLORS = ["#4ade80", "#38bdf8", "#818cf8", "#fbbf24", "#f472b6", "#94a3b8", "#fb923c"];
+const AXIS_STYLE = { fontSize: 11, fill: "#8b8d93" };
+const GRID_STROKE = "#2a2b2e";
+const TOOLTIP_STYLE = { background: "#1f2023", border: "1px solid #2a2b2e", borderRadius: 8 };
+const TOOLTIP_LABEL_STYLE = { color: "#e8e9eb" };
 
 export default function DashboardPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
+  const [flow, setFlow] = useState<FlowData | null>(null);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
 
   useEffect(() => {
     fetch("/api/sources")
       .then((res) => (res.ok ? res.json() : []))
-      .then(setSources)
+      .then((all: Source[]) => {
+        setSources(all);
+        const activeSource = all.find(
+          (s) => (s.type === "database" || s.type === "rest_api") && s.status === "connected"
+        );
+        if (activeSource) {
+          fetch(`/api/sources/${activeSource.id}/flow`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then(setFlow)
+            .catch(() => setFlow(null));
+
+          fetch(`/api/sources/${activeSource.id}/summary`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then(setSummary)
+            .catch(() => setSummary(null));
+        }
+      })
       .catch(() => setSources([]))
       .finally(() => setLoading(false));
   }, []);
 
   const hasSources = sources.length > 0;
+  const hasSummary = !!summary?.available;
+
+  const statCards: { label: string; value: string | number | null }[] = [
+    { label: "Total Revenue", value: hasSummary ? `$${summary!.total_revenue!.toLocaleString()}` : null },
+    { label: "Orders", value: hasSummary ? summary!.orders! : null },
+    { label: "Conversion Rate", value: hasSummary ? `${summary!.conversion_rate}%` : null },
+    { label: "Customers", value: hasSummary ? summary!.customers! : null },
+    { label: "Avg. Order Value", value: hasSummary ? `$${summary!.avg_order_value}` : null },
+  ];
 
   return (
     <div>
@@ -41,32 +87,82 @@ export default function DashboardPage() {
         <p>Your data control center — connect, analyze, act</p>
       </div>
 
+      {summary && !summary.available && (
+        <div className="warnings" style={{ marginBottom: 20 }}>
+          <strong>Summary unavailable:</strong> {summary.reason}
+        </div>
+      )}
+
       <div className="home-grid">
         {/* Main column */}
         <div className="home-main">
           <div className="stat-row">
-            {STAT_PLACEHOLDERS.map((s) => (
+            {statCards.map((s) => (
               <div key={s.label} className="stat-card">
                 <div className="stat-label">{s.label}</div>
-                <div className="stat-value-placeholder">—</div>
+                {s.value !== null ? (
+                  <div className="stat-value">{s.value}</div>
+                ) : (
+                  <div className="stat-value-placeholder">—</div>
+                )}
               </div>
             ))}
           </div>
 
           <div className="chart-row">
-            <div className="chart-wrap home-chart-placeholder">
-              <div className="placeholder-inner">
-                <LineChart size={22} strokeWidth={1.6} />
-                <h4>Revenue &amp; Orders</h4>
-                <p>Connect a source to see revenue and order trends over time</p>
-              </div>
+            <div className="chart-wrap">
+              {hasSummary && summary!.timeline && summary!.timeline.length > 0 ? (
+                <>
+                  <h4 style={{ margin: "0 0 12px" }}>Revenue &amp; Orders</h4>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={summary!.timeline}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                      <XAxis dataKey="date" tick={AXIS_STYLE} />
+                      <YAxis tick={AXIS_STYLE} />
+                      <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Line type="monotone" dataKey="revenue" stroke="#4ade80" strokeWidth={2} dot={false} name="Revenue" />
+                      <Line type="monotone" dataKey="orders" stroke="#38bdf8" strokeWidth={2} dot={false} name="Orders" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </>
+              ) : (
+                <div className="placeholder-inner" style={{ margin: "40px auto" }}>
+                  <h4>Revenue &amp; Orders</h4>
+                  <p>Connect a source to see revenue and order trends over time</p>
+                </div>
+              )}
             </div>
-            <div className="chart-wrap home-chart-placeholder">
-              <div className="placeholder-inner">
-                <PieChartIcon size={22} strokeWidth={1.6} />
-                <h4>Sales by Channel</h4>
-                <p>Channel breakdown appears once a source is connected</p>
-              </div>
+
+            <div className="chart-wrap">
+              {hasSummary && summary!.channel_breakdown && summary!.channel_breakdown.length > 0 ? (
+                <>
+                  <h4 style={{ margin: "0 0 12px" }}>Sales by Channel</h4>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <PieChart>
+                      <Pie
+                        data={summary!.channel_breakdown}
+                        dataKey="revenue"
+                        nameKey="channel"
+                        innerRadius={45}
+                        outerRadius={80}
+                        paddingAngle={2}
+                      >
+                        {summary!.channel_breakdown.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </>
+              ) : (
+                <div className="placeholder-inner" style={{ margin: "40px auto" }}>
+                  <h4>Sales by Channel</h4>
+                  <p>Channel breakdown appears once a source is connected</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -86,10 +182,27 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {flow ? (
+            <BusinessFlow
+              totalRows={flow.total_rows}
+              uniqueUsers={flow.unique_users}
+              conversions={flow.conversions}
+            />
+          ) : (
+            <div className="dashboard-panel">
+              <h3 className="panel-title">Business Flow</h3>
+              <div className="empty-state" style={{ padding: "28px 20px" }}>
+                <p style={{ margin: 0 }}>Sync a Database source to see your funnel here</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right column */}
         <div className="home-side">
+          <LiveActivity />
+
           <div className="dashboard-panel">
             <h3 className="panel-title">
               <Database size={16} /> Connected Sources

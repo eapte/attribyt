@@ -8,11 +8,12 @@ from attribution.service import run_analysis, AnalysisError
 from attribution.file_reader import read_tabular_file, FileReadError
 from app.schemas import AnalyzeResponse
 from sources.models import Source, SourceType
-from sources.schemas import SourceCreate, SourceResponse
+from sources.schemas import SourceCreate, SourceResponse, SourceAnalyzeRequest
 from sources.service import SourceService
 from sources.testers import test_database, test_rest_api, test_webhook
-from sources.sync import sync_database, SyncError
+from sources.sync import sync_database, sync_rest_api, SyncError
 from sources.seed_test_db import seed_test_db
+from sources.summary import compute_summary, SummaryError
 
 app = FastAPI(title="Attribyt API", version="0.4.0")
 
@@ -28,6 +29,16 @@ MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 seed_test_db()
 source_service = SourceService()
 sources_router = APIRouter(prefix="/api/sources", tags=["sources"])
+
+
+# NOTE: static-path routes like /activity/recent must be declared before
+# dynamic routes like /{source_id} — otherwise FastAPI would try to match
+# "activity" as a source_id.
+
+@sources_router.get("/activity/recent")
+def get_recent_activity():
+    """Returns a simple activity feed of recent source syncs."""
+    return {"events": source_service.get_recent_activity()}
 
 
 @sources_router.get("", response_model=list[SourceResponse])
@@ -70,16 +81,23 @@ def delete_source(source_id: str):
 
 @sources_router.post("/{source_id}/sync")
 def sync_source(source_id: str):
-    """Manually trigger a sync for a source and store the resulting rows."""
+    """Manually trigger a sync for a source and store the resulting rows.
+    Supported for Database and REST API sources. Webhooks can't be pulled
+    on demand — they push data to us, which isn't implemented yet."""
     source = source_service.get_source(source_id)
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
 
-    if source.type != SourceType.DATABASE:
-        raise HTTPException(status_code=400, detail="Sync is only implemented for Database sources so far.")
-
     try:
-        rows = sync_database(source.credentials)
+        if source.type == SourceType.DATABASE:
+            rows = sync_database(source.credentials)
+        elif source.type == SourceType.REST_API:
+            rows = sync_rest_api(source.credentials)
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Webhooks can't be synced on demand — they push data to Attribyt, which isn't implemented yet.",
+            )
     except SyncError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -99,13 +117,71 @@ def get_source_data(source_id: str):
     return {"rows": source_service.get_synced_rows(source_id)}
 
 
+@sources_router.get("/{source_id}/columns")
+def get_source_columns(source_id: str):
+    """Returns the real column names found in a source's last synced rows,
+    so the frontend can offer a mapping step — the same way file uploads
+    do — instead of assuming fixed column names."""
+    source = source_service.get_source(source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    rows = source_service.get_synced_rows(source_id)
+    if not rows:
+        raise HTTPException(status_code=400, detail="No synced data yet — run Sync first.")
+
+    return {"columns": list(rows[0].keys())}
+
+
+@sources_router.get("/{source_id}/flow")
+def get_source_flow(source_id: str):
+    """Returns simple funnel-style counts derived from a source's synced
+    rows: total events, unique users, and conversions (rows with revenue > 0).
+    Uses best-effort column guesses (user_id/revenue) since this endpoint
+    runs before any explicit column mapping is chosen."""
+    source = source_service.get_source(source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    rows = source_service.get_synced_rows(source_id)
+    if not rows:
+        return {"total_rows": 0, "unique_users": 0, "conversions": 0}
+
+    unique_users = len({r.get("user_id") for r in rows if r.get("user_id")})
+    conversions = sum(1 for r in rows if float(r.get("revenue", 0) or 0) > 0)
+
+    return {
+        "total_rows": len(rows),
+        "unique_users": unique_users,
+        "conversions": conversions,
+    }
+
+@sources_router.get("/{source_id}/summary")
+def get_source_summary(source_id: str):
+    """Returns an auto-aggregated summary (revenue, orders, conversion
+    rate, channel breakdown, daily timeline) using best-effort column
+    guessing. Returns available=False with a clear reason if columns
+    can't be confidently guessed — Home should never show fabricated
+    numbers."""
+    source = source_service.get_source(source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    rows = source_service.get_synced_rows(source_id)
+    try:
+        data = compute_summary(rows)
+    except SummaryError as e:
+        return {"available": False, "reason": str(e)}
+
+    return {"available": True, **data}
+
+
 @sources_router.post("/{source_id}/analyze", response_model=AnalyzeResponse)
-def analyze_source(source_id: str):
-    """Run attribution analysis directly on a source's last synced rows,
-    without requiring a file upload. Assumes the synced rows already use
-    the standard column names (user_id, timestamp, channel, revenue) —
-    this works for the seeded SQLite sandbox; real drivers will need
-    their own column mapping step later."""
+def analyze_source(source_id: str, mapping: SourceAnalyzeRequest):
+    """Run attribution analysis on a source's last synced rows, using an
+    explicit column mapping supplied by the frontend — mirrors how file
+    uploads work, since a source's raw column names rarely match
+    Attribyt's standard names (user_id/timestamp/channel/revenue)."""
     source = source_service.get_source(source_id)
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
@@ -116,14 +192,29 @@ def analyze_source(source_id: str):
 
     df = pl.DataFrame(rows)
 
+    rename_map = {
+        mapping.user_col: "user_id",
+        mapping.timestamp_col: "timestamp",
+        mapping.channel_col: "channel",
+        mapping.revenue_col: "revenue",
+    }
+    missing = [src for src in rename_map if src not in df.columns]
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Mapped column(s) not found in synced data: {', '.join(missing)}",
+        )
+
+    df = df.rename(rename_map)
+
     config = {
-        "source": "database",
+        "source": source.type.value,
         "model": "both",
         "user_col": "user_id",
         "timestamp_col": "timestamp",
         "channel_col": "channel",
         "revenue_col": "revenue",
-        "segment_col": None,
+        "segment_col": mapping.segment_col,
         "start_date": None,
         "end_date": None,
     }

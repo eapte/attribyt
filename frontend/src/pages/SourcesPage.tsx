@@ -41,6 +41,8 @@ const connectorTypes: ConnectorType[] = [
   },
 ];
 
+const SYNCABLE_TYPES = ["database", "rest_api"];
+
 export default function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +145,7 @@ export default function SourcesPage() {
               )}
 
               <div style={{ display: "flex", gap: 12, marginTop: 10, alignItems: "center" }}>
-                {s.type === "database" && (
+                {SYNCABLE_TYPES.includes(s.type) ? (
                   <button
                     className="btn-link"
                     onClick={() => handleSync(s.id)}
@@ -153,6 +155,8 @@ export default function SourcesPage() {
                     <RefreshCw size={13} className={syncingId === s.id ? "spin" : ""} />
                     {syncingId === s.id ? "Syncing..." : "Sync now"}
                   </button>
+                ) : (
+                  <span className="hint">Waiting for incoming events</span>
                 )}
                 <button className="btn-link source-remove-btn" onClick={() => handleDelete(s.id)}>
                   Remove

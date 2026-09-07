@@ -141,4 +141,22 @@ class SourceService:
         conn = _get_connection()
         conn.execute("UPDATE sources SET last_sync = ? WHERE id = ?", (last_sync, source_id))
         conn.commit()
-        conn.close() 
+        conn.close()
+
+    def get_recent_activity(self, limit: int = 10) -> list[dict]:
+        """Returns a simple activity feed based on real source events —
+        currently just successful/failed syncs, ordered by last_sync desc.
+        Not a general event log yet, just what we can honestly report."""
+        conn = _get_connection()
+        rows = conn.execute(
+            """
+            SELECT name, type, status, last_error, last_sync
+            FROM sources
+            WHERE last_sync IS NOT NULL
+            ORDER BY last_sync DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows] 
